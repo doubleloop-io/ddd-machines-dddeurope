@@ -92,8 +92,8 @@ riskPolicy = Policy $ statelessT action
     -- use `pure` to return a value which doesn't to any outside world interaction
     action :: RiskEvent -> IO [RiskCommand]
     action (UserDataRegistered ud)        = (\cbd -> [ProvideCreditBureauData cbd]) <$> interactWithCreditBureau ud
-    action (LoanDetailsProvided ld)       = pure []
-    action (CreditBureauDataReceived cbd) = pure []
+    action (LoanDetailsProvided _)       = pure []
+    action (CreditBureauDataReceived _) = pure []
 
 newtype UserDataUpdatesCount = UserDataUpdatesCount Int
   deriving (Eq, Show)
