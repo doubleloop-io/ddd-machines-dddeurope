@@ -91,9 +91,9 @@ riskPolicy = Policy $ statelessT action
     -- use `_ <$> something` to map over a value `something :: IO a`
     -- use `pure` to return a value which doesn't to any outside world interaction
     action :: RiskEvent -> IO [RiskCommand]
-    action (UserDataRegistered ud)        = _
-    action (LoanDetailsProvided ld)       = _
-    action (CreditBureauDataReceived cbd) = _
+    action (UserDataRegistered ud)        = (\cbd -> [ProvideCreditBureauData cbd]) <$> interactWithCreditBureau ud
+    action (LoanDetailsProvided ld)       = pure []
+    action (CreditBureauDataReceived cbd) = pure []
 
 newtype UserDataUpdatesCount = UserDataUpdatesCount Int
   deriving (Eq, Show)
