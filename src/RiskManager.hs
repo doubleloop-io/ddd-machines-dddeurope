@@ -35,24 +35,24 @@ riskAggregate = Aggregate $ mealy action initialState
   where
     -- a list is declared with `[_]`, the empty list is `[]`
     action :: RiskState -> RiskCommand -> ([RiskEvent], RiskState)
-    action NoData                                 (RegisterUserData ud)            = (_, _)
-    action NoData                                 (ProvideLoanDetails ld)          = (_, _)
-    action NoData                                 (ProvideCreditBureauData cbd)    = (_, _)
-    action (CollectedUserData ud)                 (RegisterUserData newUd)         = (_, _)
-    action (CollectedUserData ud)                 (ProvideLoanDetails ld)          = (_, _)
-    action (CollectedUserData ud)                 (ProvideCreditBureauData cbd)    = (_, _)
-    action (CollectedLoanDetailsFirst ud ld)      (RegisterUserData newUd)         = (_, _)
-    action (CollectedLoanDetailsFirst ud ld)      (ProvideLoanDetails newLd)       = (_, _)
-    action (CollectedLoanDetailsFirst ud ld)      (ProvideCreditBureauData cbd)    = (_, _)
-    action (ReceivedCreditBureauDataFirst ud cbd) (RegisterUserData newUd)         = (_, _)
-    action (ReceivedCreditBureauDataFirst ud cbd) (ProvideLoanDetails ld)          = (_, _)
-    action (ReceivedCreditBureauDataFirst ud cbd) (ProvideCreditBureauData newCbd) = (_, _)
-    action (CollectedAllData ud ld cbd)           (RegisterUserData newUd)         = (_, _)
-    action (CollectedAllData ud ld cbd)           (ProvideLoanDetails newLd)       = (_, _)
-    action (CollectedAllData ud ld cbd)           (ProvideCreditBureauData newCbd) = (_, _)
+    action NoData                                 (RegisterUserData ud)            = ([UserDataRegistered ud], CollectedUserData ud)
+    action NoData                                 (ProvideLoanDetails _)           = ([], NoData)
+    action NoData                                 (ProvideCreditBureauData _)      = ([], NoData)
+    action (CollectedUserData ud)                 (RegisterUserData _)             = ([], CollectedUserData ud)
+    action (CollectedUserData ud)                 (ProvideLoanDetails ld)          = ([LoanDetailsProvided ld], CollectedLoanDetailsFirst ud ld)
+    action (CollectedUserData ud)                 (ProvideCreditBureauData cbd)    = ([CreditBureauDataReceived cbd], ReceivedCreditBureauDataFirst ud cbd)
+    action (CollectedLoanDetailsFirst ud ld)      (RegisterUserData _)             = ([], CollectedLoanDetailsFirst ud ld)
+    action (CollectedLoanDetailsFirst ud _)       (ProvideLoanDetails newLd)       = ([LoanDetailsProvided newLd], CollectedLoanDetailsFirst ud newLd)
+    action (CollectedLoanDetailsFirst ud ld)      (ProvideCreditBureauData cbd)    = ([CreditBureauDataReceived cbd], CollectedAllData ud ld cbd)
+    action (ReceivedCreditBureauDataFirst ud cbd) (RegisterUserData _)             = ([], ReceivedCreditBureauDataFirst ud cbd)
+    action (ReceivedCreditBureauDataFirst ud cbd) (ProvideLoanDetails ld)          = ([LoanDetailsProvided ld], CollectedAllData ud ld cbd)
+    action (ReceivedCreditBureauDataFirst ud _)   (ProvideCreditBureauData newCbd) = ([CreditBureauDataReceived newCbd], ReceivedCreditBureauDataFirst ud newCbd)
+    action (CollectedAllData ud ld cbd)           (RegisterUserData _)             = ([], CollectedAllData ud ld cbd)
+    action (CollectedAllData ud ld cbd)           (ProvideLoanDetails _)           = ([], CollectedAllData ud ld cbd)
+    action (CollectedAllData ud ld cbd)           (ProvideCreditBureauData _)      = ([], CollectedAllData ud ld cbd)
 
     initialState :: RiskState
-    initialState = _
+    initialState = NoData
 
 data ReceivedData = ReceivedData
   { userData         :: Maybe UserData
