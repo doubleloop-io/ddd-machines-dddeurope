@@ -75,12 +75,12 @@ riskProjection = Projection $ stateful action initialState
     -- you can update a record with the `record {fieldName = value}` syntax
     -- use the `Just` constructor to say that a `Maybe` actually contains data
     action :: ReceivedData -> RiskEvent -> ReceivedData
-    action receivedData (UserDataRegistered ud)        = _
-    action receivedData (LoanDetailsProvided ld)       = _
-    action receivedData (CreditBureauDataReceived cbd) = _
+    action receivedData (UserDataRegistered ud)        = receivedData { userData = Just ud}
+    action receivedData (LoanDetailsProvided ld)       = receivedData { loanDetails = Just ld}
+    action receivedData (CreditBureauDataReceived cbd) = receivedData { creditBureauData = Just cbd}
 
     initialState :: ReceivedData
-    initialState = _
+    initialState = mempty
 
 interactWithCreditBureau :: UserData -> IO CreditBureauData
 interactWithCreditBureau _ = generate arbitrary
