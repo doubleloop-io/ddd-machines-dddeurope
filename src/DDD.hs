@@ -1,17 +1,20 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE InstanceSigs  #-}
+{-# LANGUAGE Rank2Types    #-}
 {-# LANGUAGE TupleSections #-}
 
 module DDD where
 
-import Machines (MealyT, Mealy, run, compose, feedback)
+import           Machines         (Mealy, MealyT, compose, feedback, run)
 
 -- base
 import qualified Control.Category as Cat (Category (id, (.)))
 
 -- profunctors
-import Data.Profunctor
+import           Data.Profunctor
 
+-- AGGREGATE
+
+-- a machine from command to events
 newtype Aggregate command event = Aggregate
   { aggregateMachine :: Mealy command [event] }
 
@@ -26,6 +29,10 @@ instance Strong Aggregate where
   first' :: Aggregate a b -> Aggregate (a, c) (b, c)
   first' (Aggregate mealy) = Aggregate (rmap (\(bs, c) -> (, c) <$> bs) $ first' mealy)
 
+
+-- POLICY
+
+-- an effectful machine from event to commands
 newtype Policy m event command = Policy
   { policyMachine :: MealyT m event [command] }
 
@@ -47,6 +54,9 @@ instance Functor m => Strong (Policy m) where
   first' :: Policy m a b -> Policy m (a, c) (b, c)
   first' (Policy mealy) = Policy (rmap (\(bs, c) -> (, c) <$> bs) $ first' mealy)
 
+-- PROJECTION
+
+-- a machine from event to readModel
 newtype Projection event readModel = Projection
   { projectionMachine :: Mealy event readModel }
 
@@ -68,13 +78,26 @@ instance Strong Projection where
   first' :: Projection a b -> Projection (a, c) (b, c)
   first' (Projection mealy) = Projection (first' mealy)
 
+-- APPLICATION
+
+-- a record that wire together the DDD building blocks
 data Application m command event readModel = Application
   { aggregate  :: Aggregate command event
+  -- NOTE: policy in optional
   , policy     :: Maybe (Policy m event command)
   , projection :: Projection event readModel
   }
 
-runApplication :: (Monad m, Foldable t, Monoid readModel) => Application m command event readModel -> t command -> m readModel
+-- typical "run something" function to execute a specific behavior
+-- common Haskell pattern that similar to Method Object
+runApplication
+  :: (Monad m, Foldable t, Monoid readModel)
+  -- wired application
+  => Application m command event readModel
+  -- a "list" of commands
+  -> t command
+  -- a effectful readModel
+  -> m readModel
 runApplication application commands = fst <$> run machine mempty commands
   where
     machine = compose

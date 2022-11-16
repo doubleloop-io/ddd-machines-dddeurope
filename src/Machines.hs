@@ -1,18 +1,22 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE InstanceSigs  #-}
+{-# LANGUAGE RankNTypes    #-}
 {-# LANGUAGE TupleSections #-}
 
 module Machines where
 
-import qualified Control.Arrow as Arrow ((***))
+import qualified Control.Arrow    as Arrow ((***))
 import qualified Control.Category as Cat (Category (id, (.)))
-import Data.Bifunctor (first)
-import Data.Foldable (foldlM)
+import           Data.Bifunctor   (first)
+import           Data.Foldable    (foldlM)
+import           Data.Profunctor  (Profunctor (..), Strong (..))
 
--- profunctors
-import Data.Profunctor
 
+-- define a Monad Transformer in order to make Mealy Monad
+-- combinable with other Monads like IO
 newtype MealyT m a b = MealyT
+  -- when executed produces an effect with
+  -- a value b (function result) and
+  -- an updated machine
   { runMealyT :: a -> m (b, MealyT m a b) }
 
 instance Monad m => Cat.Category (MealyT m) where
@@ -42,30 +46,60 @@ instance Functor m => Strong (MealyT m) where
 (&&&) :: (Cat.Category p, Strong p) => p a b -> p a c -> p a (b, c)
 (&&&) pab pac = (pab *** pac) Cat.. dimap id (\a -> (a, a)) Cat.id
 
+-- define the Monad as type alias of the Monad Transformer
+-- in other words define a more closed type from a more open one
+-- typical Haskell pattern
+type Mealy input output = forall m . Monad m => MealyT m input output
+
+
 mealyT :: Functor m => (s -> a -> m (b, s)) -> s -> MealyT m a b
 mealyT f = MealyT . (fmap . fmap . fmap $ mealyT f) . f
 
-type Mealy a b = forall m . Monad m => MealyT m a b
-
-mealy :: (s -> a -> (b, s)) -> s -> Mealy a b
+-- build a machine from raw types
+mealy
+  -- state, action: result, newState
+  :: (s -> a -> (b, s))
+  -- currentState
+  -> s
+  -- newMachine with result as output
+  -> Mealy a b
 mealy f s = (mealyT . (fmap . fmap $ pure)) f s
 
 statefulT :: Functor m => (s -> a -> m s) -> s -> MealyT m a s
 statefulT = mealyT . ((fmap (\a -> (a, a)) .) .)
 
-stateful :: (s -> a -> s) -> s -> Mealy a s
+-- build a machine from raw types
+stateful
+  -- state, action: newState
+  :: (s -> a -> s)
+  -- currentState
+  -> s
+  -- newMachine with state as output
+  -> Mealy a s
 stateful f s = (statefulT . (fmap . fmap $ pure)) f s
 
 mooreT :: Functor m => (s -> m (b, a -> s)) -> s -> MealyT m a b
 mooreT f = mealyT (\s a -> fmap ($ a) <$> f s)
 
-moore :: (s -> (b, a -> s)) -> s -> Mealy a b
+-- build a machine from raw types
+moore
+  -- state: result, function action to newState
+  :: (s -> (b, a -> s))
+  -- currentState
+  -> s
+  -- newMachine with result as output
+  -> Mealy a b
 moore f s = (mooreT . (\f' s' -> pure (($) <$> f' s'))) f s
 
 statelessT :: Functor m => (a -> m b) -> MealyT m a b
 statelessT f = mealyT (\() a -> (, ()) <$> f a) ()
 
-stateless :: (a -> b) -> Mealy a b
+-- build a machine from raw types
+stateless
+  -- function a to b
+  :: (a -> b)
+  -- newMachine with result as output
+  -> Mealy a b
 stateless f = (statelessT . (pure .)) f
 
 {- | Iteratively passes a sequence of arguments to a machine accumulating the results in a Semigroup.
@@ -82,15 +116,35 @@ compose c p q = MealyT $ \a -> do
   (c', p') <- run p c fb
   pure (c', compose c' p' q')
 
-feedback :: (Monad m, Foldable f, Monoid (f a), Monoid (f b)) => MealyT m a (f b) -> MealyT m b (f a) -> MealyT m a (f b)
+-- combine machines
+-- es: one the write side allows us to combine Aggregate and Policy
+feedback
+  -- m is the effect
+  -- f is the "list" of something
+  :: (Monad m, Foldable f, Monoid (f a), Monoid (f b))
+  -- effectful machine from a to list of b
+  -- es Aggregate: Mealy command [event]
+  => MealyT m a (f b)
+  -- effectful machine from b to list of a
+  -- es Policy: Mealy event [command]
+  -> MealyT m b (f a)
+  -- effectful machine from a to list of b
+  -- es richer Aggregate: Mealy command [event]
+  -> MealyT m a (f b)
 feedback m1 m2 = MealyT $ \a -> do
   -- run first machine
+  -- es run Aggregate: ([event], updatedAggregate)
   (bs, m1') <- runMealyT m1 a
 
   -- run second machine
+  -- es run Policy: ([command], executedPolicy)
   (as, m2') <- run m2 mempty bs
 
   -- recursively run the whole machine with the states updated
+  -- NOTE: run just one more time the aggregate logic
+  -- es run updatedAggregate with commands produced by executedPolicy
   (bs', m12) <- run (feedback m1' m2') mempty as
 
+  -- merge the two list of outputs of the first machine
+  -- es Aggregate: merge list of events
   pure (bs <> bs', m12)
