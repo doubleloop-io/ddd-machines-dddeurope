@@ -6,7 +6,7 @@ module RiskManager where
 import           DDD               (Aggregate (Aggregate),
                                     Application (Application), Policy (Policy),
                                     Projection (Projection))
-import           Machines          (mealy, stateful, statelessT, (&&&))
+import           Machines          (mealy, stateful, statelessT, (&&&), (***))
 import           RiskManager.Types (CreditBureauData, LoanDetails, UserData)
 
 -- base
@@ -139,3 +139,25 @@ userDataUpdatesCounter = Projection $ stateful action initialState
 -- combined readModels
 riskManagerApplication :: Application IO RiskCommand RiskEvent (ReceivedData, UserDataUpdatesCount)
 riskManagerApplication = Application riskAggregate (Just riskPolicy) (riskProjection &&& userDataUpdatesCounter)
+
+
+-- combination experiments
+
+-- one input/output for each machine
+-- es Policy: one event and command for the first policy and another event and command for the second policy
+foo :: Policy IO (RiskEvent, RiskEvent) (RiskCommand, RiskCommand)
+foo = riskPolicy *** riskPolicy
+
+-- es Projection: one event and readModel for the first policy and another event and readModel for the second policy
+bar :: Projection (RiskEvent, RiskEvent) (ReceivedData, UserDataUpdatesCount)
+bar = riskProjection *** userDataUpdatesCounter
+
+
+-- same single input for each machine and produces two outputs
+-- es Policy: one event and two policies that produces two commands lists
+baz :: Policy IO RiskEvent (RiskCommand, RiskCommand)
+baz = riskPolicy &&& riskPolicy
+
+-- es Projection: one event and two projections that produces two readModels
+bang :: Projection RiskEvent (ReceivedData, UserDataUpdatesCount)
+bang = riskProjection &&& userDataUpdatesCounter

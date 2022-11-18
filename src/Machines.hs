@@ -13,12 +13,16 @@ import           Data.Profunctor  (Profunctor (..), Strong (..))
 
 -- define a Monad Transformer in order to make Mealy Monad
 -- combinable with other Monads like IO
+-- Another implementation: https://hackage.haskell.org/package/machines-0.7.3/docs/Data-Machine-Mealy.html
 newtype MealyT m a b = MealyT
   -- when executed produces an effect with
   -- a value b (function result) and
   -- an updated machine
   { runMealyT :: a -> m (b, MealyT m a b) }
 
+-- The Category typeclass generalizes the notion of function composition to general “morphisms”.
+-- Instance of Category should be a higher-kind type.
+-- https://wiki.haskell.org/Typeclassopedia#Category
 instance Monad m => Cat.Category (MealyT m) where
   id :: MealyT m a a
   id = stateless id
@@ -32,6 +36,12 @@ instance Monad m => Cat.Category (MealyT m) where
     -- (resultSecondMachine, the composition of newSecondMachine and newFirstMachine)
     pure (c, m1' Cat.. m2')
 
+-- The Profunctor typeclass is a special type of Functor.
+-- Intuitively it is a bifunctor where the first argument is contravariant (reversed Functor) and the second argument is covariant (normal Functor).
+-- This characteristic enable pre/post transformation to respectively input/output of the machine.
+-- https://hackage.haskell.org/package/profunctors-5.6.2/docs/Data-Profunctor.html
+-- https://typeclasses.com/profunctors
+-- https://github.com/hablapps/DontFearTheProfunctorOptics/blob/master/Profunctors.md
 instance Functor m => Profunctor (MealyT m) where
   lmap :: (a -> b) -> MealyT m b c -> MealyT m a c
   lmap f (MealyT m) = MealyT $ fmap (fmap $ lmap f) <$> m . f
@@ -39,10 +49,13 @@ instance Functor m => Profunctor (MealyT m) where
   rmap :: (b -> c) -> MealyT m a b -> MealyT m a c
   rmap f (MealyT m) = MealyT $ fmap (f Arrow.*** rmap f) <$> m
 
+-- Special type of Profunctor
 instance Functor m => Strong (MealyT m) where
   first' :: MealyT m a b -> MealyT m (a, c) (b, c)
   first' (MealyT m) = MealyT $ \(a, c) -> ((, c) Arrow.*** first') <$> m a
 
+-- Part of Arrow typeclass
+-- https://hackage.haskell.org/package/base-4.16.3.0/docs/Control-Arrow.html#v:-42--42--42-
 (***) :: (Cat.Category p, Strong p) => p a b -> p c d -> p (a, c) (b, d)
 (***) pab pcd = second' pcd Cat.. first' pab
 
