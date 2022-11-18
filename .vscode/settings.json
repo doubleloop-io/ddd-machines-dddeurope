@@ -1,10 +1,15 @@
 {
   "cSpell.words": [
+    "Bifunctor",
     "effectful",
     "fmap",
     "foldl",
+    "instalments",
+    "lmap",
     "mempty",
     "Monoid",
+    "Profunctor",
+    "rmap",
     "Semigroup"
   ]
 }

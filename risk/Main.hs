@@ -2,9 +2,9 @@
 
 module Main where
 
-import DDD
-import RiskManager
-import RiskManager.Types
+import           DDD
+import           RiskManager
+import           RiskManager.Types
 
 myUserData :: UserData
 myUserData = UserData
@@ -20,7 +20,17 @@ myLoanDetails = LoanDetails
   }
 
 main :: IO ()
-main = print =<< runApplication riskManagerApplication
-  [ RegisterUserData myUserData
-  , ProvideLoanDetails myLoanDetails
-  ]
+main =
+  -- run the whole computation in the IO effect
+  print =<<
+    runApplication
+      riskManagerApplication -- machines combine into one
+      [ RegisterUserData myUserData
+      , ProvideLoanDetails myLoanDetails
+      ] -- commands
+
+  -- prints:
+  -- ReceivedData
+  --  {userData = Just (UserData {name = Name "Marco", surname = Surname "Perone", taxCode = TaxCode "PRNMRC83S14C957V"})
+  --  , loanDetails = Just (LoanDetails {amount = EuroCents 10000, instalments = InstalmentsNumber 12})
+  --  , creditBureauData = Just (CreditBureauData {missedPaymentDeadlines = MissedPaymentDeadlines 2, arrears = EuroCents 6})}

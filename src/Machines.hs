@@ -25,8 +25,11 @@ instance Monad m => Cat.Category (MealyT m) where
 
   (.) :: MealyT m b c -> MealyT m a b -> MealyT m a c
   (.) (MealyT m1) (MealyT m2) = MealyT $ \a -> do
+    -- (resultFirstMachine, newFirstMachine)
     (b, m2') <- m2 a
+    -- (resultSecondMachine, newSecondMachine)
     (c, m1') <- m1 b
+    -- (resultSecondMachine, the composition of newSecondMachine and newFirstMachine)
     pure (c, m1' Cat.. m2')
 
 instance Functor m => Profunctor (MealyT m) where
@@ -52,7 +55,15 @@ instance Functor m => Strong (MealyT m) where
 type Mealy input output = forall m . Monad m => MealyT m input output
 
 
-mealyT :: Functor m => (s -> a -> m (b, s)) -> s -> MealyT m a b
+-- build a machine transformer from raw types
+mealyT
+  :: Functor m
+  -- state, action: effect (result, newState)
+  => (s -> a -> m (b, s))
+  -- currentState
+  -> s
+  -- newMachineT with result as output
+  -> MealyT m a b
 mealyT f = MealyT . (fmap . fmap . fmap $ mealyT f) . f
 
 -- build a machine from raw types
@@ -105,15 +116,55 @@ stateless f = (statelessT . (pure .)) f
 {- | Iteratively passes a sequence of arguments to a machine accumulating the results in a Semigroup.
 It returns also a new version of the machine with the status updated after all the applications.
 -}
-run :: (Monad m, Semigroup b, Foldable f) => MealyT m a b -> b -> f a -> m (b, MealyT m a b)
-run mealy' initial = foldlM
-  (\(b, mealy'') a -> first (b <>) <$> runMealyT mealy'' a)
+run
+  :: (Monad m, Semigroup b, Foldable f)
+  -- a machine
+  -- es Application: projectionMachine . aggregateMachine
+  -- es Application w/ policy: projectionMachine . feedback (policyMachine . aggregateMachine)
+  => MealyT m a b
+  -- combinable output
+  -- es Application final output: readModel of a projection
+  -> b
+  -- a list of inputs
+  -- es Application: the input commands
+  -> f a
+  -- effectful machine's final result (like runMealyT
+  -- es Application: (readModel, updatedApplication)
+  -> m (b, MealyT m a b)
+run mealy' initial =
+  -- iterate over f a (not visibile here due to eta-reduction)
+  -- es Application: commands
+  foldlM
+  -- (lastUpdatedOutput, lastUpdatedMachine) current a
+  -- es Application: (lastReadModel, lastApplication) currentCommand
+  (\(b, mealy'') a ->
+    -- combine the left/first part of the tuple with the accumulated result
+    -- es Application: "merge" lastReadModel with the currentReadModel
+    first (b <>)
+    -- map over the effect and get the tuple
+    <$>
+    -- run the machine and get a tuple in an effect
+    runMealyT mealy'' a)
   (initial, mealy')
 
-compose :: (Monad m, Semigroup c, Foldable f) => c -> MealyT m b c -> MealyT m a (f b) -> MealyT m a c
+-- combine machines
+-- es: projectionMachine after aggregateMachine
+compose
+  :: (Monad m, Semigroup c, Foldable f)
+  -- combinable output
+  => c
+  -- effectful machine from b to c
+  -> MealyT m b c
+  -- effectful machine from a to list of b
+  -> MealyT m a (f b)
+  -- effectful machine from a to c
+  -> MealyT m a c
 compose c p q = MealyT $ \a -> do
+  -- run second machine and get a list of b
   (fb, q') <- runMealyT q a
+  -- run first machine that require one b from a list of b
   (c', p') <- run p c fb
+  -- (result, the composition of the updated machine)
   pure (c', compose c' p' q')
 
 -- combine machines

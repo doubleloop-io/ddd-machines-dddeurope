@@ -128,7 +128,6 @@ graph TD
 
 ![Event storming](https://github.com/marcosh/ddd-machines-dddeurope/raw/main/images/event-storming.jpg =600x600)
 
-
 ---
 
 ## Let's cook our ingredients together
@@ -304,6 +303,8 @@ instance Category Mealy where
 Sequential composition
 
 Allows us to compose <span style="color: #c7254e">`Write`</span> and <span style="color: #c7254e">`Read`</span> sides
+NOTE: The Category typeclass generalizes the notion of function composition to general “morphisms”. Instance of Category should be a higher-kind type
+https://wiki.haskell.org/Typeclassopedia#Category
 
 ---
 

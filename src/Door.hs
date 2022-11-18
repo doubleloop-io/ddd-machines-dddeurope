@@ -23,15 +23,15 @@ doorAggregate :: Aggregate DoorCommand DoorEvent
 doorAggregate = Aggregate $ mealy action initialState
   where
     action :: DoorState -> DoorCommand -> ([DoorEvent], DoorState)
-    --
+
     action IsOpen   Knock = ([Knocked], IsOpen  )
     action IsOpen   Open  = ([]       , IsOpen  )
     action IsOpen   Close = ([Closed] , IsClosed)
-    --
+
     action IsClosed Knock = ([Knocked], IsClosed)
     action IsClosed Open  = ([Opened] , IsOpen  )
     action IsClosed Close = ([]       , IsClosed)
-    --
+
     initialState :: DoorState
     initialState = IsClosed
 
@@ -46,10 +46,10 @@ countHowManyTimesTheDoorWasOpened :: Projection DoorEvent HowManyTimesTheDoorWas
 countHowManyTimesTheDoorWasOpened = Projection $ stateful action initialState
   where
     action :: HowManyTimesTheDoorWasOpened -> DoorEvent -> HowManyTimesTheDoorWasOpened
-    --
+
     action n Opened = n + 1
     action n _      = n
-    --
+
     initialState = 0
 
 doorOpensOnKnock :: Monad m => Policy m DoorEvent DoorCommand

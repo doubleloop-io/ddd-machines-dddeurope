@@ -98,11 +98,23 @@ runApplication
   -> t command
   -- a effectful readModel
   -> m readModel
-runApplication application commands = fst <$> run machine mempty commands
+runApplication application commands =
+  -- get result from the tuple
+  fst
+  -- map over the effect and get a tuple (result, newMachine)
+  <$>
+  -- run the composed machine, with empty initial state and list of commands
+  run machine mempty commands
   where
     machine = compose
+      -- empty final output, the readModel
       mempty
+      -- after machine in the composition sense
+      -- projectionMachine that update the readModel w/ a projection
       ((\p -> projectionMachine p) . projection $ application)
+      -- before machine for two cases:
+      --  no policy, so it's only the aggregateMachine
+      --  has a policy, so it's a feedback composition of aggregateMachine and then policyMachine
       (case policy application of
         Nothing      -> (\a -> aggregateMachine a) . aggregate $ application
         Just policy' -> feedback ((\a -> aggregateMachine a) . aggregate $ application) (policyMachine policy'))
