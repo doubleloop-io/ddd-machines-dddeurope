@@ -197,5 +197,5 @@ feedback m1 m2 = MealyT $ \a -> do
   (bs', m12) <- run (feedback m1' m2') mempty as
 
   -- merge the two list of outputs of the first machine
-  -- es Aggregate: merge list of events
+  -- es Aggregate: merge list of events or commands
   pure (bs <> bs', m12)

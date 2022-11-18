@@ -10,7 +10,7 @@ import           Machines         (Mealy, MealyT, compose, feedback, run)
 import qualified Control.Category as Cat (Category (id, (.)))
 
 -- profunctors
-import           Data.Profunctor
+import           Data.Profunctor  (Profunctor (lmap, rmap), Strong (first'))
 
 -- AGGREGATE
 

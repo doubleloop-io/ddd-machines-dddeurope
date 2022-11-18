@@ -6,7 +6,7 @@ module RiskManager where
 import           DDD               (Aggregate (Aggregate),
                                     Application (Application), Policy (Policy),
                                     Projection (Projection))
-import           Machines          (mealy, stateful, statelessT)
+import           Machines          (mealy, stateful, statelessT, (&&&))
 import           RiskManager.Types (CreditBureauData, LoanDetails, UserData)
 
 -- base
@@ -128,5 +128,14 @@ userDataUpdatesCounter = Projection $ stateful action initialState
     initialState :: UserDataUpdatesCount
     initialState = UserDataUpdatesCount 0
 
-riskManagerApplication :: Application IO RiskCommand RiskEvent ReceivedData
-riskManagerApplication = Application riskAggregate (Just riskPolicy) riskProjection
+-- original readModel
+-- riskManagerApplication :: Application IO RiskCommand RiskEvent ReceivedData
+-- riskManagerApplication = Application riskAggregate (Just riskPolicy) riskProjection
+
+-- different readModel
+-- riskManagerApplication :: Application IO RiskCommand RiskEvent UserDataUpdatesCount
+-- riskManagerApplication = Application riskAggregate (Just riskPolicy) userDataUpdatesCounter
+
+-- combined readModels
+riskManagerApplication :: Application IO RiskCommand RiskEvent (ReceivedData, UserDataUpdatesCount)
+riskManagerApplication = Application riskAggregate (Just riskPolicy) (riskProjection &&& userDataUpdatesCounter)
