@@ -1,6 +1,7 @@
 {
   "cSpell.words": [
     "effectful",
+    "fmap",
     "foldl",
     "mempty",
     "Monoid",
