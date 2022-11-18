@@ -1,17 +1,19 @@
-{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingVia           #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module RiskManager where
 
-import DDD
-import Machines
-import RiskManager.Types
+import           DDD               (Aggregate (Aggregate),
+                                    Application (Application), Policy (Policy),
+                                    Projection (Projection))
+import           Machines          (mealy, stateful, statelessT)
+import           RiskManager.Types (CreditBureauData, LoanDetails, UserData)
 
 -- base
-import Data.Semigroup (Last(Last))
+import           Data.Semigroup    (Last (Last))
 
 -- QuickCheck
-import Test.QuickCheck
+import           Test.QuickCheck
 
 data RiskCommand
   = RegisterUserData UserData
