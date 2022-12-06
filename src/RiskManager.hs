@@ -148,7 +148,7 @@ riskManagerApplication = Application riskAggregate (Just riskPolicy) (riskProjec
 foo :: Policy IO (RiskEvent, RiskEvent) (RiskCommand, RiskCommand)
 foo = riskPolicy *** riskPolicy
 
--- es Projection: one event and readModel for the first policy and another event and readModel for the second policy
+-- es Projection: one event and readModel for the first projection and another event and readModel for the second policy
 bar :: Projection (RiskEvent, RiskEvent) (ReceivedData, UserDataUpdatesCount)
 bar = riskProjection *** userDataUpdatesCounter
 
